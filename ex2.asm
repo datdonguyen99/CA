@@ -1,79 +1,53 @@
-	.text
-	.globl main
-main:
-	li	$a0, 1
-	jal	readWriteFile
+.text
 
-	li	$v0, 10		# EXIT
-	syscall
+Read_Write_File:
+##########################################################
+### $a1: File name will be read from/write to
+### $a2: Mode for Read from(0), Write to(1)
+### $a3: First address arr store data
+##########################################################
+		
+#Open file
+li	$v0, 13  	# system call for open file
+move	$a0, $a1 	# output file name
+move	$a1, $a2 	# Flag
+li	$a2, 0	 	# mode is ignored
+syscall 	 	# open a file (file descriptor returned in $v0)
+move	$s6, $v0 	# save the file descriptor
 	
-readWriteFile:
-	##################################################
-	### $a0: mode read or write
-	##################################################
+beqz	$a1, Read
+Write:
+move	$t0, $a3
+Count_Array_Length:
+	lb	$t1, 0($t0)
+	beq	$t1, $zero, End_Count_Length
+	addi	$a2, $a2, 1	#count length
+	addi	$t0, $t0, 1
+	j	Count_Array_Length 	
+End_Count_Length:
 	
-	addi	$sp, $sp, -4
-	sw	$ra, 0($sp)
+li	$v0, 15		# write to file
+move	$a0, $s6	# file descriptor
+move	$a1, $a3	# addr buffer write to
+syscall
+j	Close
 	
-	move	$t0, $a0
-	beqz	$t0, readFile # MODE 1: Write to file, 0: Read file.
-	j	writeFile
-	
-	
-	writeFile:
-	# Open a file
-	li	$v0, 13       # open file
-	la	$a0, msgWFile # output filename
-	li	$a1, 1        # open writing(flag 0: read, 1: write)
-	li	$a2, 0        # mode is ignored(a2: number of character to write)
-	syscall
-	     
-	move	$s0, $v0      # save the file to descriptor
-	    
-	# Write to file
-  	li	$v0, 15       # write to file
-  	move	$a0, $s0      # file descriptor
-  	la	$a1, arrWrite # addr buffer write to
-  	li	$a2, 100     # (hard) code buffer length
-  	syscall
-  	
-  	j	Exit
-  
-  
-  
-	readFile:
- 	# Open file for read
-	li	$v0, 13
-	la	$a0, msgRFile # File name to read
-	li	$a1, 0        # reading file
-	li	$a2, 0
-	syscall
-	
-	move	$s0, $v0
-	
- 	# Open read file mode
-	li	$v0, 14     # syscall to read file
-	la	$a1, arrRead
-	li	$a2, 100     # (hard) code number character read
-	move	$a0, $s0
-	syscall
-	
-	la	$a0, arrRead # print arr read
-	li	$v0, 4
-	syscall
-	
-	Exit:
-	# Close the file 
-  	li	$v0, 16      # close file
-  	move	$a0, $s0     # file descriptor to close
-  	syscall
-  	
-  	lw	$ra, 0($sp)
-  	addi	$sp, $sp, 4
-  	jr	$ra
-  	
-	.data
-arrWrite: .asciiz "assignment computer architecture is coming. \nNewline for new  future"
-arrRead: .space 50
-msgWFile: .asciiz "writeFile.txt"
-msgRFile: .asciiz "readFile.txt"
+Read:
+li	$v0, 14		# system call for reading from file
+move	$a0, $s6	# file descriptor
+move	$a1, $a3	# address of buffer from which to read
+li	$a2, 2048	# hardcoded buffer length
+syscall			# read from file
+
+# Printing File Content
+li	$v0, 4          # system Call for PRINT STRING
+move	$a0, $a1
+syscall            	# print
+
+Close:
+# Close the file
+li	$v0, 16
+move	$a0, $s6
+syscall
+
+jr	$ra
